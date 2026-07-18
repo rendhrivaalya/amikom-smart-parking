@@ -1,0 +1,11 @@
+.env
+
+/vendor
+/node_modules
+
+/storage/*.key
+
+.idea
+.vscode
+
+.DS_Store
