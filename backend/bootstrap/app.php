@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Illuminate\Auth\AuthenticationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,41 +17,72 @@ return Application::configure(basePath: dirname(__DIR__))
 
     ->withMiddleware(function (Middleware $middleware): void {
 
-        $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
-        ]);
+    $middleware->alias([
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+    ]);
 
-    })
+
+    $middleware->redirectGuestsTo(function ($request) {
+
+        if ($request->is('api/*')) {
+            return null;
+        }
+
+        return route('login');
+
+    });
+
+})
 
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        $exceptions->render(function (\Throwable $e, $request) {
+    $exceptions->render(function (\Throwable $e, $request) {
 
-            if (!$request->is('api/*')) {
-                return null;
-            }
+        if (!$request->is('api/*')) {
+            return null;
+        }
 
-            if ($e instanceof ValidationException) {
-                return response()->json([
-                    'success' => false,
-                    'type' => 'Validation Error',
-                    'message' => 'Validasi gagal',
-                    'errors' => $e->errors(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ], 422);
-            }
+
+        // Jika belum login / token tidak ada
+        if ($e instanceof AuthenticationException) {
 
             return response()->json([
                 'success' => false,
-                'type' => class_basename($e),
-                'message' => $e->getMessage(),
+                'type' => 'Authentication Error',
+                'message' => 'Unauthenticated'
+            ], 401);
+
+        }
+
+
+        // Validation error
+        if ($e instanceof ValidationException) {
+
+            return response()->json([
+                'success' => false,
+                'type' => 'Validation Error',
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-            ], $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500);
+            ], 422);
 
-        });
+        }
 
-    })
+
+        // Error lainnya
+        return response()->json([
+            'success' => false,
+            'type' => class_basename($e),
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ], $e instanceof HttpExceptionInterface 
+            ? $e->getStatusCode() 
+            : 500);
+
+    });
+
+})
 
     ->create();

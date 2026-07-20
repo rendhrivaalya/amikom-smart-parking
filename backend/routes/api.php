@@ -1,99 +1,265 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\ParkingController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ParkingTokenController;
+use App\Http\Controllers\Api\GuestController;
+
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes
+| PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
+
 
 Route::get('/test', function () {
+
     return response()->json([
-        'message' => 'API OK'
+        'message'=>'API OK'
     ]);
+
 });
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Routes
+| AUTH
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function () {
 
-    // Authentication
-    Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Profile
-    Route::get('/profile', [ProfileController::class, 'index']);
-    Route::put('/profile', [ProfileController::class, 'update']);
-
-    // Vehicle
-    Route::apiResource('vehicles', VehicleController::class);
-    Route::post('/vehicles/{vehicle}/generate-qr', [VehicleController::class, 'generateQr']);
-
-    // Parking Token
-Route::post('/parking/generate-token', 
-    [ParkingTokenController::class, 'generate']
+Route::post('/register',
+    [AuthController::class,'register']
 );
 
 
-Route::post('/parking/generate-in',
-    [ParkingTokenController::class, 'generateIn']
+Route::post('/login',
+    [AuthController::class,'login']
 );
 
 
-Route::post('/parking/generate-out',
-    [ParkingTokenController::class, 'generateOut']
-);
-
-    // Parking
-    Route::post('/check-in', [ParkingController::class, 'checkIn']);
-    Route::post('/check-out', [ParkingController::class, 'checkOut']);
-    Route::get('/parking-history', [ParkingController::class, 'history']);
-});
 
 /*
 |--------------------------------------------------------------------------
-| Admin & Petugas
+| GUEST REGISTRATION
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'role:admin,petugas'])->group(function () {
 
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::post('/guest/register',
+    [GuestController::class,'register']
+);
 
-    // Admin melihat semua user
-    Route::get('/admin/users', [ProfileController::class, 'allUsers']);
 
-     Route::get('/admin/vehicles', [VehicleController::class, 'allVehicles']);
-
-});
 
 /*
 |--------------------------------------------------------------------------
-| Mahasiswa
+| PARKING CHECK IN
+|--------------------------------------------------------------------------
+|
+| Digunakan oleh:
+|
+| Guest       : GST-XXXXXX
+| Mahasiswa   : IN-XXXXXX
+|
+| Tidak memakai auth middleware
+|
+*/
+
+
+Route::post('/check-in',
+    [ParkingController::class,'checkIn']
+);
+
+
+ Route::post(
+        '/check-out',
+        [ParkingController::class,'checkOut']
+    );
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED USER
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'role:mahasiswa'])->group(function () {
 
-    Route::get('/dashboard-user', function () {
-        return response()->json([
-            'message' => 'Dashboard Mahasiswa',
-            'user' => auth()->user()
-        ]);
-    });
+Route::middleware('auth:sanctum')->group(function(){
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Logout
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post('/logout',
+        [AuthController::class,'logout']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Profile
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get('/profile',
+        [ProfileController::class,'index']
+    );
+
+
+    Route::put('/profile',
+        [ProfileController::class,'update']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Vehicle
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::apiResource(
+        'vehicles',
+        VehicleController::class
+    );
+
+
+    Route::post(
+        '/vehicles/{vehicle}/generate-qr',
+        [VehicleController::class,'generateQr']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parking Token
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post(
+        '/parking/generate-token',
+        [ParkingTokenController::class,'generate']
+    );
+
+
+    Route::post(
+        '/parking/generate-in',
+        [ParkingTokenController::class,'generateIn']
+    );
+
+
+    Route::post(
+        '/parking/generate-out',
+        [ParkingTokenController::class,'generateOut']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parking Transaction
+    |--------------------------------------------------------------------------
+    */
+
+
+   
+
+
+    Route::get(
+        '/parking-history',
+        [ParkingController::class,'history']
+    );
+
 
 });
 
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN & PETUGAS
+|--------------------------------------------------------------------------
+*/
+
+
+Route::middleware([
+    'auth:sanctum',
+    'role:admin,petugas'
+])->group(function(){
+
+
+    Route::get(
+        '/dashboard',
+        [DashboardController::class,'index']
+    );
+
+
+    Route::get(
+        '/admin/users',
+        [ProfileController::class,'allUsers']
+    );
+
+
+    Route::get(
+        '/admin/vehicles',
+        [VehicleController::class,'allVehicles']
+    );
+
+
+});
+
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| MAHASISWA
+|--------------------------------------------------------------------------
+*/
+
+
+Route::middleware([
+    'auth:sanctum',
+    'role:mahasiswa'
+])->group(function(){
+
+
+    Route::get(
+        '/dashboard-user',
+        function(){
+
+            return response()->json([
+
+                'message'=>'Dashboard Mahasiswa',
+
+                'user'=>auth()->user()
+
+            ]);
+
+        }
+    );
+
+
+});
