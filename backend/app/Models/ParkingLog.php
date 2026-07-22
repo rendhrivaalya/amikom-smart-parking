@@ -24,6 +24,8 @@ class ParkingLog extends Model
 
 'parking_token_id',
 
+'checked_by',
+
 'check_in',
 
 'check_out',
@@ -78,5 +80,15 @@ class ParkingLog extends Model
             'parking_token_id'
         );
     }
+
+    public function petugas()
+{
+    return $this->belongsTo(
+        User::class,
+        'checked_by'
+    );
+}
+
+
 
 }

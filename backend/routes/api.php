@@ -9,6 +9,9 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ParkingTokenController;
 use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\UserDashboardController;
+use App\Http\Controllers\Api\ParkingSlotController;
+use App\Http\Controllers\Api\ScannerController;
 
 
 /*
@@ -104,6 +107,12 @@ Route::middleware('auth:sanctum')->group(function(){
     */
 
 
+
+    Route::get(
+    '/parking-slots',
+    [ParkingSlotController::class,'index']
+);
+
     Route::post('/logout',
         [AuthController::class,'logout']
     );
@@ -188,16 +197,18 @@ Route::middleware('auth:sanctum')->group(function(){
    
 
 
-    Route::get(
-        '/parking-history',
-        [ParkingController::class,'history']
-    );
-
 
 });
 
 
 
+
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN & PETUGAS
+|--------------------------------------------------------------------------
+*/
 
 
 /*
@@ -236,6 +247,26 @@ Route::middleware([
         [VehicleController::class,'allVehicles']
     );
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | PETUGAS SCANNER
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post(
+        '/scanner/check-in',
+        [ScannerController::class,'checkIn']
+    );
+
+
+    Route::post(
+        '/scanner/check-out',
+        [ScannerController::class,'checkOut']
+    );
+
+
 });
 
 
@@ -257,17 +288,7 @@ Route::middleware([
 
     Route::get(
         '/dashboard-user',
-        function(){
-
-            return response()->json([
-
-                'message'=>'Dashboard Mahasiswa',
-
-                'user'=>auth()->user()
-
-            ]);
-
-        }
+        [UserDashboardController::class,'index']
     );
 
 
