@@ -9,40 +9,36 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
 {
     Schema::create('parking_tokens', function (Blueprint $table) {
 
         $table->id();
 
-        // pemilik kendaraan
         $table->foreignId('user_id')
-              ->constrained()
-              ->cascadeOnDelete();
+            ->constrained()
+            ->cascadeOnDelete();
 
-        // kendaraan yang digunakan
         $table->foreignId('vehicle_id')
-              ->constrained()
-              ->cascadeOnDelete();
+            ->constrained()
+            ->cascadeOnDelete();
 
-        // token QR dinamis
         $table->string('token')->unique();
 
-        // IN = masuk, OUT = keluar
         $table->enum('type', [
             'IN',
             'OUT'
         ]);
 
-        // waktu kadaluarsa
         $table->timestamp('expired_at');
 
-        // apakah sudah digunakan scanner
-        $table->boolean('is_used')
-              ->default(false);
+        $table->boolean('is_used')->default(false);
 
         $table->timestamp('used_at')->nullable();
+
+        $table->timestamps();
     });
+
 }
 
     /**

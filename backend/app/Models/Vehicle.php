@@ -44,4 +44,11 @@ public function parkings()
     return $this->hasMany(Parking::class);
 }
 
+public function getVehicleCategoryAttribute()
+{
+    return $this->vehicle_type == 'Motor'
+        ? 'Roda 2'
+        : 'Roda 4';
+}
+
 }

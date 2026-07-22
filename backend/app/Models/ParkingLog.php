@@ -10,25 +10,27 @@ class ParkingLog extends Model
     use HasFactory;
 
 
-    protected $fillable = [
+    protected $fillable=[
 
-        'user_id',
+'user_id',
 
-        'guest_id',
+'guest_id',
 
-        'vehicle_id',
+'vehicle_id',
 
-        'parking_slot_id',
+'vehicle_category',
 
-        'parking_token_id',
+'parking_slot_id',
 
-        'check_in',
+'parking_token_id',
 
-        'check_out',
+'check_in',
 
-        'status'
+'check_out',
 
-    ];
+'status'
+
+];
 
 
     protected $casts = [

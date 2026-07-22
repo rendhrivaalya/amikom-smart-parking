@@ -10,9 +10,20 @@ class ParkingSlot extends Model
     use HasFactory;
 
     protected $fillable = [
-        'slot_code',
-        'status'
-    ];
+
+    'slot_code',
+
+    'status',
+
+    'area_code',
+
+    'area_name',
+
+    'allowed_vehicle',
+
+    'allowed_role'
+
+];
 
     public function parkingLogs()
     {

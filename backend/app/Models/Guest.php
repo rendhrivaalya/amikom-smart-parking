@@ -36,4 +36,11 @@ class Guest extends Model
         'used_at' => 'datetime',
         'is_used' => 'boolean',
     ];
+
+    public function getVehicleCategoryAttribute()
+{
+    return $this->vehicle_type == 'Motor'
+        ? 'Roda 2'
+        : 'Roda 4';
+}
 }

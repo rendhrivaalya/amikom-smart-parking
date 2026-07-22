@@ -126,6 +126,10 @@ Route::middleware('auth:sanctum')->group(function(){
         [ProfileController::class,'update']
     );
 
+    Route::get(
+    '/parking-history',
+    [ParkingController::class,'history']
+);
 
 
     /*
@@ -216,6 +220,12 @@ Route::middleware([
 
 
     Route::get(
+        '/admin/parking-history',
+        [ParkingController::class,'adminHistory']
+    );
+
+
+    Route::get(
         '/admin/users',
         [ProfileController::class,'allUsers']
     );
@@ -225,7 +235,6 @@ Route::middleware([
         '/admin/vehicles',
         [VehicleController::class,'allVehicles']
     );
-
 
 });
 

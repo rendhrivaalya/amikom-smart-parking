@@ -12,16 +12,20 @@ class AuthController extends Controller
 {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
+        'nim' => 'required|string|max:255|unique:users,nim',
         'email' => 'required|email|unique:users,email',
         'password' => 'required|min:6',
     ]);
 
+
     $user = User::create([
         'name' => $validated['name'],
+        'nim' => $validated['nim'],
         'email' => $validated['email'],
-        'password' => Hash::make($validated['password']),
+        'password'=>$validated['password'],
         'role' => 'mahasiswa',
     ]);
+
 
     return response()->json([
         'message' => 'Register berhasil',
@@ -31,40 +35,56 @@ class AuthController extends Controller
 
 
     public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+{
+    $request->validate([
+        'login'=>'required',
+        'password'=>'required'
+    ]);
 
 
-        $user = User::where('email', $request->email)->first();
+    // cari berdasarkan nim atau email
+    $user = User::where('nim', $request->login)
+                ->orWhere('email', $request->login)
+                ->first();
 
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-
-            return response()->json([
-                'message' => 'Email atau password salah'
-            ], 401);
-
-        }
-
-
-        $token = $user->createToken('smart-parking-token')
-            ->plainTextToken;
-
+    if(
+        !$user ||
+        !Hash::check(
+            $request->password,
+            $user->password
+        )
+    ){
 
         return response()->json([
-            'message' => 'Login berhasil',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-            ]
-        ]);
+            'message'=>'Email/NIM atau password salah'
+        ],401);
+
     }
+
+
+    $token = $user
+        ->createToken('smart-parking-token')
+        ->plainTextToken;
+
+
+    return response()->json([
+
+        'message'=>'Login berhasil',
+
+        'token'=>$token,
+
+        'user'=>[
+            'id'=>$user->id,
+            'name'=>$user->name,
+            'nim'=>$user->nim,
+            'email'=>$user->email,
+            'role'=>$user->role
+        ]
+
+    ]);
+
+}
 
 
     public function logout(Request $request)

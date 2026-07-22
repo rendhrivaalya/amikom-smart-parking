@@ -1,24 +1,91 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Vehicle;
 use App\Models\ParkingLog;
 use App\Models\ParkingSlot;
 
 class DashboardController extends Controller
 {
-    public function index()
-    {
-        return response()->json([
-            'total_users' => User::count(),
-            'total_vehicles' => Vehicle::count(),
-            'total_slots' => ParkingSlot::count(),
-            'occupied_slots' => ParkingSlot::where('status', 'occupied')->count(),
-            'available_slots' => ParkingSlot::where('status', 'available')->count(),
-            'parking_today' => ParkingLog::whereDate('created_at', today())->count(),
-        ]);
-    }
+
+public function index()
+{
+
+    return response()->json([
+
+
+        'kendaraan_parkir_sekarang'
+        =>
+        ParkingLog::where('status','parking')
+        ->count(),
+
+
+
+        'slot_kosong'
+        =>
+        ParkingSlot::whereDoesntHave(
+            'parkingLogs',
+            function($q){
+                $q->where('status','parking');
+            }
+        )->count(),
+
+
+
+        'slot_terisi'
+        =>
+        ParkingLog::where('status','parking')
+        ->count(),
+
+
+
+        'total_mahasiswa_hari_ini'
+        =>
+        ParkingLog::whereDate(
+            'created_at',
+            today()
+        )
+        ->whereHas(
+            'user',
+            fn($q)=>$q->where('role','mahasiswa')
+        )
+        ->count(),
+
+
+
+        'total_guest_hari_ini'
+        =>
+        ParkingLog::whereDate(
+            'created_at',
+            today()
+        )
+        ->whereHas(
+            'user',
+            fn($q)=>$q->where('role','guest')
+        )
+        ->count(),
+
+
+
+        'roda_2'
+        =>
+        ParkingLog::where(
+            'vehicle_category',
+            'Roda 2'
+        )->count(),
+
+
+
+        'roda_4'
+        =>
+        ParkingLog::where(
+            'vehicle_category',
+            'Roda 4'
+        )->count(),
+
+
+    ]);
+
+}
+
 }
