@@ -40,7 +40,7 @@ class Guest extends Model
     public function getVehicleCategoryAttribute()
 {
     return $this->vehicle_type == 'Motor'
-        ? 'Roda 2'
-        : 'Roda 4';
+        ? 'motor'
+        : 'mobil';
 }
 }

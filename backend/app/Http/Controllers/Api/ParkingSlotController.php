@@ -82,8 +82,19 @@ class ParkingSlotController extends Controller
                         ->where('status','occupied')
                         ->count(),
 
+                        'is_full'=>
+
+    $items
+        ->where(
+            'status',
+            'available'
+        )
+        ->count()==0,
+
 
                     'slots'=>$items->map(function($slot){
+
+                    
 
                         return [
 
@@ -93,9 +104,12 @@ class ParkingSlotController extends Controller
 
                             'status'=>$slot->status
 
-                        ];
+                            
 
+                        ];
+                        
                     })
+                    
 
                 ];
 
@@ -113,5 +127,58 @@ class ParkingSlotController extends Controller
         ]);
 
     }
+
+    public function areas()
+{
+    $areas = ParkingSlot::select(
+        'area_code',
+        'area_name'
+    )
+    ->groupBy(
+        'area_code',
+        'area_name'
+    )
+    ->orderBy('area_code')
+    ->get();
+
+    return response()->json([
+
+        'success'=>true,
+
+        'total'=>$areas->count(),
+
+        'data'=>$areas
+
+    ]);
+}
+
+public function available(Request $request)
+{
+
+    $query = ParkingSlot::where(
+        'status',
+        'available'
+    );
+
+    if($request->filled('area')){
+
+        $query->where(
+            'area_code',
+            $request->area
+        );
+
+    }
+
+    return response()->json([
+
+        'success'=>true,
+
+        'data'=>$query
+            ->orderBy('slot_code')
+            ->get()
+
+    ]);
+
+}
 
 }

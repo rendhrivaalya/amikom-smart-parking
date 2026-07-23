@@ -81,6 +81,14 @@ class ParkingLog extends Model
         );
     }
 
+    public function checker()
+{
+    return $this->belongsTo(
+        User::class,
+        'checked_by'
+    );
+}
+
     public function petugas()
 {
     return $this->belongsTo(

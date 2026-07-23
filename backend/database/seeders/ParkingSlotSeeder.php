@@ -91,19 +91,20 @@ class ParkingSlotSeeder extends Seeder
 
             for($i=1; $i <= $area['total']; $i++){
 
-                ParkingSlot::create([
+                ParkingSlot::updateOrCreate(
 
-                    'slot_code'=> $area['code'].'-'.str_pad($i,3,'0',STR_PAD_LEFT),
+    [
+        'slot_code' => $area['code'].'-'.str_pad($i,3,'0',STR_PAD_LEFT),
+    ],
 
-                    'area_code'=>$area['code'],
+    [
+        'area_code'       => $area['code'],
+        'area_name'       => $area['name'],
+        'allowed_vehicle' => $area['vehicle'],
+        'allowed_role'    => $area['role'],
+    ]
 
-                    'area_name'=>$area['name'],
-
-                    'allowed_vehicle'=>$area['vehicle'],
-
-                    'allowed_role'=>$area['role'],
-
-                ]);
+);
 
             }
 

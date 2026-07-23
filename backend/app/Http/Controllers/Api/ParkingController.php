@@ -21,415 +21,8 @@ class ParkingController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function checkIn(Request $request)
-    {
-
-        try {
-
-
-            $request->validate([
-
-                'token'=>'required|string',
-
-                'parking_slot_id'=>'required|exists:parking_slots,id'
-
-            ]);
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CEK GUEST
-            |--------------------------------------------------------------------------
-            */
-
-
-            $guest = Guest::where(
-                    'qr_token',
-                    $request->token
-                )
-                ->where(
-                    'is_used',
-                    false
-                )
-                ->where(
-                    'expired_at',
-                    '>',
-                    now()
-                )
-                ->first();
-
-
-
-            if($guest){
-
-
-                $slot = ParkingSlot::findOrFail(
-                    $request->parking_slot_id
-                );
-
-
-
-                if($slot->status == 'occupied'){
-
-                    return response()->json([
-                        'message'=>'Slot sudah terisi'
-                    ],400);
-
-                }
-
-
-
-                // Role guest hanya area umum
-                if(
-                    $slot->allowed_role != 'Semua'
-                ){
-
-                    return response()->json([
-                        'message'=>'Area parkir hanya untuk dosen dan staff.'
-                    ],403);
-
-                }
-
-
-
-                if(
-                    $slot->allowed_vehicle != 'Semua'
-                    &&
-                    strtolower($slot->allowed_vehicle)
-                    !=
-                    strtolower($guest->vehicle_type)
-                ){
-
-                    return response()->json([
-                        'message'=>'Area parkir tidak sesuai kendaraan.'
-                    ],403);
-
-                }
-
-
-
-                DB::beginTransaction();
-
-
-
-                $parking = ParkingLog::create([
-
-                    'user_id'=>null,
-
-                    'guest_id'=>$guest->id,
-
-                    'vehicle_id'=>null,
-
-                    'vehicle_category'=>$guest->vehicle_category,
-
-                    'parking_slot_id'=>$slot->id,
-
-                    'parking_token_id'=>null,
-
-                    'check_in'=>now(),
-
-                    'status'=>'parking'
-
-                ]);
-
-
-
-                $slot->update([
-
-                    'status'=>'occupied'
-
-                ]);
-
-
-
-                $guest->update([
-
-                    'is_used'=>true,
-
-                    'used_at'=>now()
-
-                ]);
-
-
-
-                DB::commit();
-
-
-
-                return response()->json([
-
-                    'message'=>'Guest berhasil check in',
-
-                    'data'=>$parking
-
-                ],201);
-
-
-            }
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CEK MAHASISWA / USER
-            |--------------------------------------------------------------------------
-            */
-
-
-            $user = auth('sanctum')->user();
-
-
-
-            if(!$user){
-
-                return response()->json([
-
-                    'message'=>'User harus login'
-
-                ],401);
-
-            }
-
-
-
-
-            $parkingToken = ParkingToken::where(
-                    'token',
-                    $request->token
-                )
-                ->where(
-                    'type',
-                    'IN'
-                )
-                ->where(
-                    'is_used',
-                    false
-                )
-                ->where(
-                    'expired_at',
-                    '>',
-                    now()
-                )
-                ->first();
-
-
-
-            if(!$parkingToken){
-
-                return response()->json([
-
-                    'message'=>'Token parkir tidak valid'
-
-                ],400);
-
-            }
-
-
-
-
-            if($parkingToken->user_id != $user->id){
-
-                return response()->json([
-
-                    'message'=>'Token bukan milik user'
-
-                ],403);
-
-            }
-
-
-
-
-            $vehicle = Vehicle::find(
-                $parkingToken->vehicle_id
-            );
-
-
-
-            if(!$vehicle){
-
-                return response()->json([
-
-                    'message'=>'Kendaraan tidak ditemukan'
-
-                ],404);
-
-            }
-
-
-
-
-            $slot = ParkingSlot::findOrFail(
-                $request->parking_slot_id
-            );
-
-
-
-
-            if($slot->status == 'occupied'){
-
-                return response()->json([
-
-                    'message'=>'Slot sudah terisi'
-
-                ],400);
-
-            }
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | VALIDASI JENIS KENDARAAN
-            |--------------------------------------------------------------------------
-            */
-
-
-            if(
-                $slot->allowed_vehicle != 'Semua'
-                &&
-                strtolower($slot->allowed_vehicle)
-                !=
-                strtolower($vehicle->vehicle_type)
-            ){
-
-                return response()->json([
-
-                    'message'=>'Area parkir tidak sesuai kendaraan.'
-
-                ],403);
-
-            }
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | VALIDASI ROLE
-            |--------------------------------------------------------------------------
-            */
-
-
-            if(
-                $slot->allowed_role != 'Semua'
-                &&
-                strtolower($slot->allowed_role)
-                !=
-                strtolower($user->role)
-            ){
-
-                return response()->json([
-
-                    'message'=>'Area parkir tidak diperbolehkan.'
-
-                ],403);
-
-            }
-
-
-
-
-            DB::beginTransaction();
-
-
-
-            $parking = ParkingLog::create([
-
-
-                'user_id'=>$user->id,
-
-
-                'guest_id'=>null,
-
-
-                'vehicle_id'=>$vehicle->id,
-
-
-                'vehicle_category'=>$vehicle->vehicle_category,
-
-
-                'parking_slot_id'=>$slot->id,
-
-
-                'parking_token_id'=>$parkingToken->id,
-
-
-                'check_in'=>now(),
-
-
-                'status'=>'parking'
-
-
-            ]);
-
-
-
-
-            $slot->update([
-
-                'status'=>'occupied'
-
-            ]);
-
-
-
-
-            $parkingToken->update([
-
-                'is_used'=>true,
-
-                'used_at'=>now()
-
-            ]);
-
-
-
-
-            DB::commit();
-
-
-
-
-            return response()->json([
-
-                'message'=>'Mahasiswa berhasil check in',
-
-                'data'=>$parking
-
-            ],201);
-
-
-
-        }
-        catch(\Exception $e){
-
-
-            DB::rollBack();
-
-
-            return response()->json([
-
-                'message'=>$e->getMessage(),
-
-                'line'=>$e->getLine()
-
-            ],500);
-
-
-        }
-
-
-    }
-
-        /*
-    |--------------------------------------------------------------------------
-    | CHECK OUT
-    |--------------------------------------------------------------------------
-    */
+   
+    
 
     public function checkOut(Request $request)
     {
@@ -840,103 +433,301 @@ class ParkingController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function adminHistory()
-    {
+    public function adminHistory(Request $request)
+{
 
+    $query = ParkingLog::with([
+        'user',
+        'vehicle',
+        'parkingSlot',
+        'guest'
+    ]);
 
-        $logs = ParkingLog::with([
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Area
+    |--------------------------------------------------------------------------
+    */
 
-            'user',
+    if ($request->filled('area')) {
 
-            'vehicle',
+        $query->whereHas('parkingSlot', function ($q) use ($request) {
 
-            'parkingSlot',
+            $q->where('area_code', $request->area);
 
-            'guest'
+        });
 
-        ])
-        ->latest()
-        ->get();
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Status
+    |--------------------------------------------------------------------------
+    */
 
+    if ($request->filled('status')) {
 
+        $query->where('status', $request->status);
 
-        return response()->json([
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Role
+    |--------------------------------------------------------------------------
+    */
 
-            'success'=>true,
+    if ($request->filled('role')) {
 
+        $query->whereHas('user', function ($q) use ($request) {
 
-            'data'=>$logs->map(function($log){
+            $q->where('role', $request->role);
 
+        });
 
-                return [
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Guest / User
+    |--------------------------------------------------------------------------
+    */
 
-                    'user'=>
-                        $log->user
-                        ?
-                        $log->user->name
-                        :
-                        'Guest',
+    if ($request->filled('type')) {
 
+        if ($request->type == 'Guest') {
 
+            $query->whereNotNull('guest_id');
 
-                    'role'=>
-                        $log->user
-                        ?
-                        $log->user->role
-                        :
-                        'guest',
+        }
 
+        if ($request->type == 'User') {
 
+            $query->whereNull('guest_id');
 
-                    'vehicle'=>
-                        $log->vehicle
-                        ?
-                        $log->vehicle->plate_number
-                        :
-                        '-',
+        }
 
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Filter Tanggal
+    |--------------------------------------------------------------------------
+    */
 
-                    'category'=>$log->vehicle_category,
+    if ($request->filled('date')) {
 
+        $query->whereDate(
+            'check_in',
+            $request->date
+        );
 
+    }
 
-                    'area'=>
-                        $log->parkingSlot
-                        ?
-                        $log->parkingSlot->area_name
-                        :
-                        null,
+    /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
 
+    if ($request->filled('keyword')) {
 
+        $keyword = $request->keyword;
 
-                    'slot'=>
-                        $log->parkingSlot
-                        ?
-                        $log->parkingSlot->slot_code
-                        :
-                        null,
+        $query->where(function ($q) use ($keyword) {
 
+            $q->whereHas('user', function ($u) use ($keyword) {
 
-'check_in' => optional($log->check_in)->format('Y-m-d H:i:s'),
-'check_out' => optional($log->check_out)->format('Y-m-d H:i:s'),
-
-
-                    'status'=>$log->status
-
-
-                ];
-
+                $u->where('name', 'like', "%{$keyword}%");
 
             })
 
+            ->orWhereHas('guest', function ($g) use ($keyword) {
 
-        ]);
+                $g->where('name', 'like', "%{$keyword}%")
+                  ->orWhere('plate_number', 'like', "%{$keyword}%");
+
+            })
+
+            ->orWhereHas('vehicle', function ($v) use ($keyword) {
+
+                $v->where('plate_number', 'like', "%{$keyword}%")
+                  ->orWhere('brand', 'like', "%{$keyword}%")
+                  ->orWhere('vehicle_model', 'like', "%{$keyword}%");
+
+            });
+
+        });
 
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sorting
+    |--------------------------------------------------------------------------
+    */
+
+    $sort = strtolower($request->get('sort', 'desc'));
+
+    $query->orderBy(
+        'check_in',
+        $sort == 'asc' ? 'asc' : 'desc'
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+    $perPage = $request->get('per_page', 10);
+
+    $logs = $query->paginate($perPage);
+
+    return response()->json([
+
+        'success' => true,
+
+        'message' => 'History parkir berhasil diambil',
+
+        'pagination' => [
+
+            'current_page' => $logs->currentPage(),
+
+            'last_page' => $logs->lastPage(),
+
+            'per_page' => $logs->perPage(),
+
+            'total_data' => $logs->total()
+
+        ],
+
+        'data' => collect($logs->items())->map(function ($log) {
+
+            return [
+
+                'id' => $log->id,
+
+                'type' => $log->guest ? 'Guest' : 'User',
+
+                'name' => $log->guest
+                    ? $log->guest->name
+                    : $log->user?->name,
+
+                'role' => $log->guest
+                    ? 'guest'
+                    : $log->user?->role,
+
+                'plate_number' => $log->guest
+                    ? $log->guest->plate_number
+                    : $log->vehicle?->plate_number,
+
+                'vehicle' => $log->guest
+                    ? trim($log->guest->brand . ' ' . $log->guest->vehicle_model)
+                    : trim($log->vehicle?->brand . ' ' . $log->vehicle?->vehicle_model),
+
+                'vehicle_category' => $log->vehicle_category,
+
+                'area' => $log->parkingSlot?->area_name,
+
+                'area_code' => $log->parkingSlot?->area_code,
+
+                'slot' => $log->parkingSlot?->slot_code,
+
+                'check_in' => optional($log->check_in)->format('Y-m-d H:i:s'),
+
+                'check_out' => optional($log->check_out)->format('Y-m-d H:i:s'),
+
+                'duration' => $log->check_out
+                    ? $log->check_in->diffForHumans($log->check_out, true)
+                    : $log->check_in->diffForHumans(now(), true),
+
+                'status' => $log->status
+
+            ];
+
+        })
+
+    ]);
+
+}
+
+public function historyDetail($id)
+{
+
+    $parking = ParkingLog::with([
+        'user',
+        'guest',
+        'vehicle',
+        'parkingSlot'
+    ])->find($id);
+
+    if (!$parking) {
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Riwayat parkir tidak ditemukan'
+        ], 404);
+
+    }
+
+    return response()->json([
+
+        'success' => true,
+
+        'message' => 'Detail riwayat parkir berhasil diambil',
+
+        'data' => [
+
+            'id' => $parking->id,
+
+            'type' => $parking->guest ? 'Guest' : 'User',
+
+            'name' => $parking->guest
+                ? $parking->guest->name
+                : $parking->user?->name,
+
+            'role' => $parking->guest
+                ? 'guest'
+                : $parking->user?->role,
+
+            'plate_number' => $parking->guest
+                ? $parking->guest->plate_number
+                : $parking->vehicle?->plate_number,
+
+            'brand' => $parking->guest
+                ? $parking->guest->brand
+                : $parking->vehicle?->brand,
+
+            'vehicle_model' => $parking->guest
+                ? $parking->guest->vehicle_model
+                : $parking->vehicle?->vehicle_model,
+
+            'vehicle_category' => $parking->vehicle_category,
+
+            'area' => $parking->parkingSlot?->area_name,
+
+            'area_code' => $parking->parkingSlot?->area_code,
+
+            'slot' => $parking->parkingSlot?->slot_code,
+
+            'check_in' => optional($parking->check_in)->format('Y-m-d H:i:s'),
+
+            'check_out' => optional($parking->check_out)->format('Y-m-d H:i:s'),
+
+            'duration' => $parking->check_out
+                ? $parking->check_in->diffForHumans($parking->check_out, true)
+                : $parking->check_in->diffForHumans(now(), true),
+
+            'status' => $parking->status,
+
+            'checked_by' => $parking->checked_by
+
+        ]
+
+    ]);
+
+}
 
 
 }

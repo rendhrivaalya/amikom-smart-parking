@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\UserDashboardController;
 use App\Http\Controllers\Api\ParkingSlotController;
 use App\Http\Controllers\Api\ScannerController;
+use App\Http\Controllers\Api\ParkingMonitorController;
+use App\Http\Controllers\Api\SlotRecommendationController;
 
 
 /*
@@ -107,16 +109,10 @@ Route::middleware('auth:sanctum')->group(function(){
     */
 
 
-
-    Route::get(
-    '/parking-slots',
-    [ParkingSlotController::class,'index']
-);
-
-    Route::post('/logout',
+    Route::post(
+        '/logout',
         [AuthController::class,'logout']
     );
-
 
 
     /*
@@ -126,19 +122,73 @@ Route::middleware('auth:sanctum')->group(function(){
     */
 
 
-    Route::get('/profile',
+    Route::get(
+        '/profile',
         [ProfileController::class,'index']
     );
 
 
-    Route::put('/profile',
+    Route::put(
+        '/profile',
         [ProfileController::class,'update']
     );
 
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parking Slot
+    |--------------------------------------------------------------------------
+    */
+
+
     Route::get(
-    '/parking-history',
-    [ParkingController::class,'history']
+        '/parking-slots',
+        [ParkingSlotController::class,'index']
+    );
+
+    Route::get(
+    '/parking-slots/areas',
+    [ParkingSlotController::class,'areas']
 );
+
+Route::get(
+    '/parking-slots/available',
+    [ParkingSlotController::class,'available']
+);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parking Recommendation
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post(
+        '/parking/recommend-slot',
+        [SlotRecommendationController::class,'recommend']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parking History
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/parking-history',
+        [ParkingController::class,'history']
+    );
+
+    Route::get(
+    '/admin/parking-history/{id}',
+    [ParkingController::class,'historyDetail']
+);
+
 
 
     /*
@@ -186,6 +236,9 @@ Route::middleware('auth:sanctum')->group(function(){
     );
 
 
+});
+
+
 
     /*
     |--------------------------------------------------------------------------
@@ -198,7 +251,7 @@ Route::middleware('auth:sanctum')->group(function(){
 
 
 
-});
+
 
 
 
@@ -224,16 +277,111 @@ Route::middleware([
 ])->group(function(){
 
 
+Route::get(
+    '/parking-monitor',
+    [ParkingMonitorController::class,'index']
+);
+
+Route::get(
+    '/parking-monitor/detail',
+    [ParkingMonitorController::class,'detail']
+);
+
+
+Route::get(
+    '/parking-monitor/statistic',
+    [ParkingMonitorController::class,'statistic']
+);
+
+Route::get(
+    '/parking-monitor/{id}',
+    [ParkingMonitorController::class, 'show']
+);
+
+
+
+
+Route::get(
+    '/admin/guests',
+    [GuestController::class, 'index']
+);
+
+Route::get(
+    '/guest',
+    [GuestController::class,'index']
+);
+
+Route::get(
+    '/guest/waiting',
+    [GuestController::class,'pending']
+);
+
+Route::post(
+    '/guest/{guest}/approve',
+    [GuestController::class,'approve']
+);
+
+Route::post(
+    '/guest/{guest}/reject',
+    [GuestController::class,'reject']
+);
+
+Route::get(
+    '/guest/history',
+    [GuestController::class,'history']
+);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard Admin
+    |--------------------------------------------------------------------------
+    */
+
+
     Route::get(
         '/dashboard',
         [DashboardController::class,'index']
     );
+
+    Route::get(
+    '/dashboard/chart',
+    [DashboardController::class,'chart']
+);
+
+Route::get('/dashboard/realtime', [DashboardController::class,'realtime']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Monitoring Parkir
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/parking-monitor',
+        [ParkingMonitorController::class,'index']
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | History
+    |--------------------------------------------------------------------------
+    */
 
 
     Route::get(
         '/admin/parking-history',
         [ParkingController::class,'adminHistory']
     );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | User & Vehicle Management
+    |--------------------------------------------------------------------------
+    */
 
 
     Route::get(
@@ -280,9 +428,16 @@ Route::middleware([
 */
 
 
+/*
+|--------------------------------------------------------------------------
+| USER PARKING
+|--------------------------------------------------------------------------
+*/
+
+
 Route::middleware([
     'auth:sanctum',
-    'role:mahasiswa'
+    'role:mahasiswa,dosen,staff'
 ])->group(function(){
 
 

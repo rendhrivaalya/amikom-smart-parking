@@ -7,6 +7,7 @@ use App\Models\ParkingLog;
 use App\Models\ParkingSlot;
 use App\Models\ParkingToken;
 use App\Models\Vehicle;
+use App\Models\Guest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -22,13 +23,145 @@ class ScannerController extends Controller
     public function checkIn(Request $request)
     {
 
-        $request->validate([
+    $request->validate([
+    'token' => 'required|string',
+    'parking_slot_id' => 'required|exists:parking_slots,id',
+]);
 
-            'token'=>'required|string',
+    $guest = \App\Models\Guest::where(
+    'qr_token',
+    $request->token
+)->first();
 
-            'parking_slot_id'=>'required|exists:parking_slots,id'
+if($guest){
 
-        ]);
+    if($guest->status!='approved'){
+
+        return response()->json([
+            'message'=>'Guest belum disetujui'
+        ],400);
+
+    }
+
+    if($guest->is_used){
+
+    return response()->json([
+        'message'=>'QR Guest sudah digunakan'
+    ],400);
+
+}
+
+    if($guest->expired_at < now()){
+
+        return response()->json([
+            'message'=>'QR Guest sudah expired'
+        ],400);
+
+    }
+
+    $alreadyParking = ParkingLog::where(
+    'guest_id',
+    $guest->id
+)
+->whereNull('check_out')
+->exists();
+
+if($alreadyParking){
+
+    return response()->json([
+
+        'message' => 'Guest sedang parkir'
+
+    ],400);
+
+}
+
+    $slot = ParkingSlot::findOrFail(
+        $request->parking_slot_id
+    );
+
+    if($slot->status == 'occupied'){
+
+    return response()->json([
+        'message'=>'Slot sudah terisi'
+    ],400);
+
+}
+
+    DB::beginTransaction();
+
+try{
+
+    ParkingLog::create([
+
+        'guest_id'=>$guest->id,
+        'vehicle_id'=>null,
+
+        'vehicle_category'=>$guest->vehicle_type,
+
+        'parking_slot_id'=>$slot->id,
+
+        'check_in'=>now(),
+
+        'checked_by'=>auth()->id(),
+
+        'status'=>'parking'
+
+    ]);
+
+    $slot->update([
+
+        'status'=>'occupied'
+
+    ]);
+
+    $guest->update([
+
+        'status'=>'parking',
+
+        'is_used'=>true,
+
+        'used_at'=>now()
+
+    ]);
+
+    DB::commit();
+
+    return response()->json([
+
+    'success' => true,
+
+    'message' => 'Guest berhasil check in',
+
+    'data' => [
+
+        'guest_id' => $guest->id,
+
+        'slot' => $slot->slot_code,
+
+        'area' => $slot->area_name,
+
+        'check_in' => now()->format('Y-m-d H:i:s')
+
+    ]
+
+]);
+
+}catch(\Exception $e){
+
+    DB::rollBack();
+
+    return response()->json([
+
+        'message'=>$e->getMessage()
+
+    ],500);
+
+}
+
+}
+
+    
 
 
         $petugas = auth()->user();
@@ -114,101 +247,86 @@ class ScannerController extends Controller
 
 
 
-        if(
-            $slot->allowed_role != 'Semua'
-            &&
-            $slot->allowed_role != $parkingToken->user->role
-        ){
+        if ($slot->allowed_role != 'Semua') {
 
-            return response()->json([
+    $allowedRoles = array_map(
+        'trim',
+        explode(',', strtolower($slot->allowed_role))
+    );
 
-                'message'=>'Role tidak diperbolehkan masuk area ini'
+    if (!in_array(strtolower($parkingToken->user->role), $allowedRoles)) {
 
-            ],403);
+        return response()->json([
+            'message' => 'Role tidak diperbolehkan masuk area ini'
+        ], 403);
 
-        }
+    }
 
-
-
+}
 
         DB::beginTransaction();
 
+try{
 
-        try{
+    $parking = ParkingLog::create([
 
+        'user_id' => $parkingToken->user_id,
 
-            $parking = ParkingLog::create([
+        'guest_id' => null,
 
-                'user_id'=>$parkingToken->user_id,
+        'vehicle_id' => $vehicle->id,
 
-                'guest_id'=>null,
+        'vehicle_category' => $vehicle->vehicle_type,
 
-                'vehicle_id'=>$vehicle->id,
+        'parking_slot_id' => $slot->id,
 
-                'vehicle_category'=>$vehicle->vehicle_category,
+        'parking_token_id' => $parkingToken->id,
 
-                'parking_slot_id'=>$slot->id,
+        'checked_by' => $petugas->id,
 
-                'parking_token_id'=>$parkingToken->id,
+        'check_in' => now(),
 
-                'checked_by'=>$petugas->id,
+        'status' => 'parking'
 
-                'check_in'=>now(),
+    ]);
 
-                'status'=>'parking'
+    $slot->update([
 
-            ]);
+        'status' => 'occupied'
 
+    ]);
 
+    $parkingToken->update([
 
-            $slot->update([
+        'is_used' => true,
 
-                'status'=>'occupied'
+        'used_at' => now()
 
-            ]);
+    ]);
 
+    DB::commit();
 
+    return response()->json([
 
-            $parkingToken->update([
+        'success' => true,
 
-                'is_used'=>true,
+        'message' => 'Check in berhasil',
 
-                'used_at'=>now()
+        'data' => $parking
 
-            ]);
+    ],201);
 
+}catch(\Exception $e){
 
+    DB::rollBack();
 
-            DB::commit();
+    return response()->json([
 
+        'message' => $e->getMessage()
 
+    ],500);
 
-            return response()->json([
-
-                'success'=>true,
-
-                'message'=>'Check in berhasil',
-
-                'data'=>$parking
-
-            ],201);
-
-
-
-        }catch(\Exception $e){
-
-
-            DB::rollBack();
-
-
-            return response()->json([
-
-                'message'=>$e->getMessage()
-
-            ],500);
-
-
-        }
+}
 
 
     }
@@ -225,7 +343,103 @@ class ScannerController extends Controller
     public function checkOut(Request $request)
     {
 
+    $guest = Guest::where(
+    'qr_token',
+    $request->token
+)->first();
 
+if($guest){
+
+if($guest->expired_at < now()){
+
+    return response()->json([
+        'message'=>'QR Guest sudah expired'
+    ],400);
+
+}
+
+
+    $parking = ParkingLog::where(
+
+        'guest_id',
+        $guest->id
+
+    )->where(
+
+        'status',
+        'parking'
+
+    )->first();
+
+    if(!$parking){
+
+        return response()->json([
+            'message'=>'Guest tidak sedang parkir'
+        ],404);
+
+    }
+
+    if($guest->expired_at < now()){
+
+    return response()->json([
+
+        'message' => 'QR Guest sudah expired'
+
+    ],400);
+
+}
+
+    DB::beginTransaction();
+
+try{
+
+    $parking->update([
+
+        'check_out' => now(),
+
+        'status' => 'completed',
+
+        'checked_by' => auth()->id()
+
+    ]);
+
+    ParkingSlot::find(
+        $parking->parking_slot_id
+    )?->update([
+
+        'status' => 'available'
+
+    ]);
+
+    $guest->update([
+
+        'status' => 'finished'
+
+    ]);
+
+    DB::commit();
+
+    return response()->json([
+
+        'success' => true,
+
+        'message' => 'Guest berhasil check out'
+
+    ]);
+
+}catch(\Exception $e){
+
+    DB::rollBack();
+
+    return response()->json([
+
+        'message' => $e->getMessage()
+
+    ],500);
+
+}
+
+}
         $request->validate([
 
             'token'=>'required|string'
